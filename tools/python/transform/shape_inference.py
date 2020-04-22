@@ -69,6 +69,7 @@ class ShapeInference(object):
 
     def run(self):
         for op in self._net.op:
+            print(op.type + ', ' + op.name)
             mace_check(op.type in self._op_shape_inference,
                        "Mace does not support caffe op type %s yet"
                        % op.type)
