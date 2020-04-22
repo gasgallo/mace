@@ -882,7 +882,9 @@ class CaffeConverter(base_converter.ConverterInterface):
     def convert_upsample(self, node):
         op = self.convert_general_op(node)
 
-        output_size = self._shape_inferer._output_shape_cache[op.output[0]]
+        for out in op.output:
+            print(out)
+        output_size = self._shape_inferer._output_shape_cache[op.output]
         output_size = np.array(output_size[-2:]).astype(np.int32)
         op.type = MaceOp.ResizeNearestNeighbor.name
         size_tensor_name = op.name + ":size"
