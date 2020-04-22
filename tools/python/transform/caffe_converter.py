@@ -195,6 +195,7 @@ class CaffeConverter(base_converter.ConverterInterface):
             'L1Normalization': self.convert_lpnorm,
             'MVN': self.convert_MVN,
             'Bias': self.convert_Bias,
+            'Upsample': self.convert_upsample,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -873,3 +874,19 @@ class CaffeConverter(base_converter.ConverterInterface):
             mace_check(param.axis == 0 or param.axis == 1,
                        "BiasAdd only support axis with 0 or 1.")
             axis_arg.i = param.axis
+
+    def convert_upsample(self, node):
+        op = self.convert_general_op(node)
+        del op.input[1:]  # cut all unnecessary inputs (onnx>=1.5)
+
+        output_size = self._graph_shapes_dict[op.output[0]]
+        output_size = np.array(output_size[-2:]).astype(np.int32)
+        op.type = MaceOp.ResizeNearestNeighbor.name
+        size_tensor_name = op.name + ":size"
+        self.add_tensor(size_tensor_name, output_size.shape,
+                        mace_pb2.DT_INT32, output_size)
+        op.input.append(size_tensor_name)
+
+        align_corners_arg = op.arg.add()
+        align_corners_arg.name = MaceKeyword.mace_align_corners_str
+        align_corners_arg.i = node.attrs.get('align_corners', 0)
