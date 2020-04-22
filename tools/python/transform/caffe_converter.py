@@ -204,6 +204,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         self._caffe_net = CaffeNet()
         self._caffe_layers = caffe_pb2.NetParameter()
         caffe_weights = caffe_pb2.NetParameter()
+        self._shape_inferer = None
 
         # parse prototxt
         with open(src_model_file, 'r') as f:
@@ -222,12 +223,15 @@ class CaffeConverter(base_converter.ConverterInterface):
 
         self._skip_ops = []
 
-    def run(self):
-        self.convert_ops()
-        shape_inferer = shape_inference.ShapeInference(
+    def extract_shape_info(self):
+        self._shape_inferer = shape_inference.ShapeInference(
             self._mace_net_def,
             self._option.input_nodes.values())
-        shape_inferer.run()
+        self._shape_inferer.run()
+    
+    def run(self):
+        self.extract_shape_info()
+        self.convert_ops()
         self.replace_output_tensor_name()
         return self._mace_net_def
 
@@ -877,9 +881,8 @@ class CaffeConverter(base_converter.ConverterInterface):
 
     def convert_upsample(self, node):
         op = self.convert_general_op(node)
-        del op.input[1:]  # cut all unnecessary inputs (onnx>=1.5)
 
-        output_size = self._graph_shapes_dict[op.output[0]]
+        output_size = self._shape_inferer._output_shape_cache[op.output[0]]
         output_size = np.array(output_size[-2:]).astype(np.int32)
         op.type = MaceOp.ResizeNearestNeighbor.name
         size_tensor_name = op.name + ":size"
