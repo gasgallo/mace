@@ -82,6 +82,7 @@ class ShapeInference(object):
                        op.name, op.type))
         for i in six.moves.range(len(shapes)):
             output_name = op.output[i]
+            print(output_name)
             output_shape = op.output_shape.add()
             output_shape.dims.extend(shapes[i])
             self._output_shape_cache[output_name] = shapes[i]
